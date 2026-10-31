@@ -1,0 +1,54 @@
+/*
+ * Rose Quartz theme (approximation in the Morphous style).
+ *
+ * Uses the same shadcn variable names as Morphous exports, so you can replace
+ * this whole file with the CSS from the Morphous gallery ("Copy all" on the
+ * Rose Quartz page) and the app will pick it up. `.dark` is toggled
+ * automatically from the macOS appearance setting.
+ */
+:root {
+  --background: #fbf7f8;
+  --foreground: #2c2328;
+  --card: #f5edf0;
+  --card-foreground: #2c2328;
+  --primary: #b0607a;
+  --primary-foreground: #fffafb;
+  --secondary: #f3e6ea;
+  --secondary-foreground: #3a2b32;
+  --muted: #f1e7ea;
+  --muted-foreground: #76646c;
+  --accent: #f2cbd6;
+  --accent-foreground: #2c2328;
+  --border: #e7d8dd;
+  --ring: #d99aae;
+  --sidebar: #f6eef1;
+  --sidebar-foreground: #3a2b32;
+  --sidebar-primary: #b0607a;
+  --sidebar-accent: #f0dbe2;
+  --sidebar-accent-foreground: #8e4560;
+  --sidebar-border: #eadde1;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #1d191c;
+  --foreground: #f3eced;
+  --card: #262024;
+  --card-foreground: #f3eced;
+  --primary: #e8a6b9;
+  --primary-foreground: #2a1d23;
+  --secondary: #33292e;
+  --secondary-foreground: #f3eced;
+  --muted: #2e272b;
+  --muted-foreground: #b8a9b0;
+  --accent: #5b3b47;
+  --accent-foreground: #f3eced;
+  --border: rgba(255, 255, 255, 0.1);
+  --ring: #e8a6b9;
+  --sidebar: #19161a;
+  --sidebar-foreground: #e6dde1;
+  --sidebar-primary: #e8a6b9;
+  --sidebar-accent: #3a2d34;
+  --sidebar-accent-foreground: #f6c9d6;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+}
