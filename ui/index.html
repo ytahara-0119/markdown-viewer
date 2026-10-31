@@ -23,7 +23,18 @@
   <div id="resizer" aria-hidden="true"></div>
 
   <main id="main">
-    <div id="pathbar"></div>
+    <div id="pathbar">
+      <span id="pathbar-text"></span>
+      <button id="btn-toc" class="icon-btn" title="目次 (⌘T)" aria-label="目次" aria-pressed="false">
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="2" y1="4.5" x2="14" y2="4.5"/><line x1="2" y1="8.5" x2="10" y2="8.5"/><line x1="2" y1="12.5" x2="12" y2="12.5"/>
+        </svg>
+      </button>
+    </div>
+    <div id="toc-panel" aria-label="目次">
+      <div class="toc-header">目次</div>
+      <nav id="toc-nav"></nav>
+    </div>
     <div id="search-bar" role="search" aria-label="ドキュメント内検索">
       <button id="search-regex" class="search-toggle" title="正規表現 (Alt+R)" aria-pressed="false">.*</button>
       <input id="search-input" type="search" placeholder="検索..." autocomplete="off" spellcheck="false">
@@ -45,7 +56,7 @@
         <h1>MD Viewer</h1>
         <p>フォルダを開くか、Markdownファイル・フォルダをここにドロップしてください。</p>
         <button class="primary-btn" id="btn-open-empty">フォルダを開く</button>
-        <p class="hint">⌘O 開く ・ ⌘B サイドバー ・ ⌘F 検索 ・ ⌘R 再読込 ・ ⌘+ / ⌘− 文字サイズ</p>
+        <p class="hint">⌘O 開く ・ ⌘B サイドバー ・ ⌘F 検索 ・ ⌘T 目次 ・ ⌘R 再読込 ・ ⌘+ / ⌘− 文字サイズ</p>
       </section>
     </div>
   </main>

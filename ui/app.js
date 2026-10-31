@@ -14,6 +14,9 @@ const searchBar = $('search-bar');
 const searchInput = $('search-input');
 const searchCount = $('search-count');
 const searchRegexBtn = $('search-regex');
+const tocPanel = $('toc-panel');
+const tocNav = $('toc-nav');
+const btnToc = $('btn-toc');
 
 const state = {
   root: null,
@@ -100,7 +103,7 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
   content.innerHTML = rendered.html;
   decorate();
   body.classList.remove('is-empty');
-  $('pathbar').textContent = relPath(path);
+  $('pathbar-text').textContent = relPath(path);
   document.title = `${basename(path)} — MD Viewer`;
 
   revealInTree(path);
@@ -108,6 +111,8 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
 
   if (anchor) scrollToAnchor(anchor);
   else scroller.scrollTop = keepScroll ? prevScroll : 0;
+
+  buildToc();
 
   if (searchSt.open && searchInput.value) {
     searchSt.marks = [];
@@ -119,10 +124,12 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
 function showEmpty() {
   state.file = null;
   content.innerHTML = '';
-  $('pathbar').textContent = '';
+  $('pathbar-text').textContent = '';
   document.title = 'MD Viewer';
   body.classList.add('is-empty');
   renderTree();
+  tocNav.innerHTML = '';
+  tocPanel.classList.remove('visible');
 }
 
 async function pickFolder() {
@@ -413,6 +420,69 @@ $('search-prev').addEventListener('click', () => navigateMatch(-1));
 $('search-next').addEventListener('click', () => navigateMatch(1));
 $('search-close').addEventListener('click', closeSearch);
 
+// ---------- TOC ----------
+let tocVisible = store.get('tocVisible', false);
+
+function buildToc() {
+  tocNav.innerHTML = '';
+  const headings = [...content.querySelectorAll('h1, h2, h3')];
+  if (!headings.length) {
+    const empty = document.createElement('div');
+    empty.className = 'toc-empty';
+    empty.textContent = '見出しなし';
+    tocNav.append(empty);
+    return;
+  }
+  for (const h of headings) {
+    const btn = document.createElement('button');
+    btn.className = 'toc-item';
+    btn.dataset.level = h.tagName[1];
+    btn.dataset.id = h.id;
+    btn.textContent = h.textContent;
+    btn.title = h.textContent;
+    btn.addEventListener('click', () => scrollToAnchor(h.id));
+    tocNav.append(btn);
+  }
+  applyTocVisible();
+  updateTocActive();
+}
+
+function applyTocVisible() {
+  tocPanel.classList.toggle('visible', tocVisible);
+  btnToc.setAttribute('aria-pressed', String(tocVisible));
+}
+
+function toggleToc() {
+  tocVisible = !tocVisible;
+  applyTocVisible();
+  store.set('tocVisible', tocVisible);
+  if (tocVisible) updateTocActive();
+}
+
+function updateTocActive() {
+  if (!tocVisible) return;
+  const items = [...tocNav.querySelectorAll('.toc-item[data-id]')];
+  if (!items.length) return;
+  const headings = [...content.querySelectorAll('h1, h2, h3')];
+  const scrollerTop = scroller.getBoundingClientRect().top;
+  const threshold = 80;
+  let activeId = headings[0]?.id ?? null;
+  for (const h of headings) {
+    if (h.getBoundingClientRect().top - scrollerTop <= threshold) activeId = h.id;
+    else break;
+  }
+  let activeItem = null;
+  for (const item of items) {
+    const isActive = item.dataset.id === activeId;
+    item.classList.toggle('active', isActive);
+    if (isActive) activeItem = item;
+  }
+  if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+}
+
+scroller.addEventListener('scroll', () => { updateTocActive(); }, { passive: true });
+btnToc.addEventListener('click', toggleToc);
+
 // ---------- live reload ----------
 let fsTimer;
 let pendingStructural = false;
@@ -479,6 +549,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'o') { e.preventDefault(); pickFolder(); }
   else if (k === 'f') { e.preventDefault(); openSearch(); }
+  else if (k === 't') { e.preventDefault(); if (state.file) toggleToc(); }
   else if (k === 'b' || k === '\\') {
     e.preventDefault();
     store.set('sidebarHidden', body.classList.toggle('no-sidebar'));
