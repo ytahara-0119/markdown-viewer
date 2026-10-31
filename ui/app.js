@@ -10,6 +10,10 @@ const content = $('content');
 const scroller = $('scroller');
 const treeEl = $('tree');
 const filterEl = $('filter');
+const searchBar = $('search-bar');
+const searchInput = $('search-input');
+const searchCount = $('search-count');
+const searchRegexBtn = $('search-regex');
 
 const state = {
   root: null,
@@ -104,6 +108,12 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
 
   if (anchor) scrollToAnchor(anchor);
   else scroller.scrollTop = keepScroll ? prevScroll : 0;
+
+  if (searchSt.open && searchInput.value) {
+    searchSt.marks = [];
+    searchSt.current = -1;
+    runSearch();
+  }
 }
 
 function showEmpty() {
@@ -282,6 +292,127 @@ filterEl.addEventListener('keydown', (e) => {
   }
 });
 
+// ---------- search ----------
+const searchSt = { open: false, marks: [], current: -1, regex: false };
+
+function openSearch() {
+  searchSt.open = true;
+  searchBar.classList.add('visible');
+  searchInput.focus();
+  searchInput.select();
+  if (searchInput.value) runSearch();
+}
+
+function closeSearch() {
+  searchSt.open = false;
+  searchBar.classList.remove('visible');
+  clearSearchHighlights();
+  scroller.focus();
+}
+
+function clearSearchHighlights() {
+  for (const mark of searchSt.marks) {
+    if (!mark.isConnected) continue;
+    const parent = mark.parentNode;
+    if (!parent) continue;
+    parent.replaceChild(document.createTextNode(mark.textContent), mark);
+    parent.normalize();
+  }
+  searchSt.marks = [];
+  searchSt.current = -1;
+  searchCount.textContent = '';
+}
+
+function runSearch() {
+  clearSearchHighlights();
+  const query = searchInput.value;
+  if (!query) return;
+
+  let pattern;
+  try {
+    pattern = searchSt.regex
+      ? new RegExp(query, 'gi')
+      : new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  } catch {
+    searchCount.textContent = '無効な正規表現';
+    return;
+  }
+
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const p = node.parentElement;
+      if (!p || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+  for (const node of textNodes) {
+    const text = node.textContent;
+    pattern.lastIndex = 0;
+    const matches = [...text.matchAll(pattern)];
+    if (!matches.length) continue;
+    const parent = node.parentNode;
+    if (!parent) continue;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    for (const m of matches) {
+      if (m.index > last) frag.append(document.createTextNode(text.slice(last, m.index)));
+      const mark = document.createElement('mark');
+      mark.className = 'search-mark';
+      mark.textContent = m[0];
+      frag.append(mark);
+      searchSt.marks.push(mark);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.append(document.createTextNode(text.slice(last)));
+    parent.replaceChild(frag, node);
+  }
+
+  if (searchSt.marks.length) {
+    searchSt.current = 0;
+    searchSt.marks[0].classList.add('current');
+    searchSt.marks[0].scrollIntoView({ block: 'center' });
+  }
+  updateSearchCount();
+}
+
+function updateSearchCount() {
+  const total = searchSt.marks.length;
+  if (!total) searchCount.textContent = searchInput.value ? '一致なし' : '';
+  else searchCount.textContent = `${searchSt.current + 1} / ${total}`;
+}
+
+function navigateMatch(dir) {
+  if (!searchSt.marks.length) return;
+  searchSt.marks[searchSt.current].classList.remove('current');
+  searchSt.current = (searchSt.current + dir + searchSt.marks.length) % searchSt.marks.length;
+  const mark = searchSt.marks[searchSt.current];
+  mark.classList.add('current');
+  mark.scrollIntoView({ block: 'center' });
+  updateSearchCount();
+}
+
+let searchTimer;
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 120);
+});
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); navigateMatch(e.shiftKey ? -1 : 1); }
+  else if (e.key === 'Escape') closeSearch();
+});
+searchRegexBtn.addEventListener('click', () => {
+  searchSt.regex = !searchSt.regex;
+  searchRegexBtn.setAttribute('aria-pressed', String(searchSt.regex));
+  if (searchInput.value) runSearch();
+});
+$('search-prev').addEventListener('click', () => navigateMatch(-1));
+$('search-next').addEventListener('click', () => navigateMatch(1));
+$('search-close').addEventListener('click', closeSearch);
+
 // ---------- live reload ----------
 let fsTimer;
 let pendingStructural = false;
@@ -347,6 +478,7 @@ window.addEventListener('keydown', (e) => {
   if (!(e.metaKey || e.ctrlKey)) return;
   const k = e.key.toLowerCase();
   if (k === 'o') { e.preventDefault(); pickFolder(); }
+  else if (k === 'f') { e.preventDefault(); openSearch(); }
   else if (k === 'b' || k === '\\') {
     e.preventDefault();
     store.set('sidebarHidden', body.classList.toggle('no-sidebar'));

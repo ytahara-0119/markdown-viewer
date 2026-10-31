@@ -139,6 +139,82 @@ body.resizing { cursor: col-resize; user-select: none; }
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* ---------- Search bar ---------- */
+#search-bar {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 20px;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  z-index: 20;
+}
+#search-bar.visible { display: flex; }
+#search-input {
+  width: 200px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  outline: none;
+}
+#search-input:focus { border-color: var(--ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 25%, transparent); }
+#search-count {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  min-width: 52px;
+  text-align: center;
+  white-space: nowrap;
+}
+.search-toggle {
+  padding: 3px 7px;
+  font-size: 12px;
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  line-height: 1.6;
+}
+.search-toggle:hover { background: var(--sidebar-accent); }
+.search-toggle[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.search-nav {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  flex: none;
+}
+.search-nav:hover { background: var(--sidebar-accent); color: var(--foreground); }
+
+mark.search-mark {
+  background: color-mix(in srgb, var(--ring) 45%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+mark.search-mark.current {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 2px;
 }
 #pathbar {
   flex: none;
