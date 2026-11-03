@@ -14,12 +14,11 @@ const searchBar = $('search-bar');
 const searchInput = $('search-input');
 const searchCount = $('search-count');
 const searchRegexBtn = $('search-regex');
+const searchScopeBtn = $('search-scope');
 const tocPanel = $('toc-panel');
 const tocNav = $('toc-nav');
 const btnToc = $('btn-toc');
-const ftsInput = $('fts-input');
 const ftsResults = $('fts-results');
-const ftsRegexBtn = $('fts-regex');
 
 const state = {
   root: null,
@@ -120,7 +119,8 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
   if (searchSt.open && searchInput.value) {
     searchSt.marks = [];
     searchSt.current = -1;
-    runSearch();
+    if (searchSt.global) runFts();
+    else runSearch();
   }
 }
 
@@ -302,22 +302,48 @@ filterEl.addEventListener('keydown', (e) => {
   }
 });
 
-// ---------- search ----------
-const searchSt = { open: false, marks: [], current: -1, regex: false };
+// ---------- search (unified: ファイル内 / 全体) ----------
+const searchSt = { open: false, marks: [], current: -1, regex: false, global: false };
 
 function openSearch() {
   searchSt.open = true;
   searchBar.classList.add('visible');
   searchInput.focus();
   searchInput.select();
-  if (searchInput.value) runSearch();
+  if (searchInput.value) {
+    if (searchSt.global) runFts();
+    else runSearch();
+  }
 }
 
 function closeSearch() {
   searchSt.open = false;
   searchBar.classList.remove('visible');
   clearSearchHighlights();
+  if (searchSt.global) {
+    searchSt.global = false;
+    searchScopeBtn.textContent = 'ファイル内';
+    searchScopeBtn.classList.remove('global');
+    body.classList.remove('fts-mode');
+    ftsResults.innerHTML = '';
+  }
   scroller.focus();
+}
+
+function setSearchScope(isGlobal) {
+  searchSt.global = isGlobal;
+  searchScopeBtn.textContent = isGlobal ? '全体' : 'ファイル内';
+  searchScopeBtn.classList.toggle('global', isGlobal);
+  if (isGlobal) {
+    clearSearchHighlights();
+    body.classList.add('fts-mode');
+    body.classList.remove('no-sidebar');
+    if (searchInput.value) runFts();
+  } else {
+    body.classList.remove('fts-mode');
+    ftsResults.innerHTML = '';
+    if (searchInput.value) runSearch();
+  }
 }
 
 function clearSearchHighlights() {
@@ -408,17 +434,24 @@ function navigateMatch(dir) {
 let searchTimer;
 searchInput.addEventListener('input', () => {
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(runSearch, 120);
+  searchTimer = setTimeout(() => {
+    if (searchSt.global) runFts();
+    else runSearch();
+  }, searchSt.global ? 250 : 120);
 });
 searchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { e.preventDefault(); navigateMatch(e.shiftKey ? -1 : 1); }
+  if (e.key === 'Enter') { e.preventDefault(); if (!searchSt.global) navigateMatch(e.shiftKey ? -1 : 1); }
   else if (e.key === 'Escape') closeSearch();
 });
 searchRegexBtn.addEventListener('click', () => {
   searchSt.regex = !searchSt.regex;
   searchRegexBtn.setAttribute('aria-pressed', String(searchSt.regex));
-  if (searchInput.value) runSearch();
+  if (searchInput.value) {
+    if (searchSt.global) runFts();
+    else runSearch();
+  }
 });
+searchScopeBtn.addEventListener('click', () => setSearchScope(!searchSt.global));
 $('search-prev').addEventListener('click', () => navigateMatch(-1));
 $('search-next').addEventListener('click', () => navigateMatch(1));
 $('search-close').addEventListener('click', closeSearch);
@@ -494,25 +527,10 @@ scroller.addEventListener('scroll', () => { updateTocActive(); updateProgressBar
 btnToc.addEventListener('click', toggleToc);
 
 // ---------- full-text search ----------
-const ftsSt = { regex: false };
-
-function openFts() {
-  body.classList.add('fts-mode');
-  body.classList.remove('no-sidebar');
-  ftsInput.focus();
-  ftsInput.select();
-}
-
-function closeFts() {
-  body.classList.remove('fts-mode');
-  ftsResults.innerHTML = '';
-  ftsInput.value = '';
-}
-
 function highlightFts(text, query) {
   if (!query) return escapeHtml(text);
   try {
-    const pattern = ftsSt.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = searchSt.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const re = new RegExp(pattern, 'gi');
     const parts = [];
     let last = 0;
@@ -525,6 +543,18 @@ function highlightFts(text, query) {
     return parts.join('');
   } catch {
     return escapeHtml(text);
+  }
+}
+
+async function runFts() {
+  const q = searchInput.value.trim();
+  if (!q || !state.root) { ftsResults.innerHTML = ''; return; }
+  ftsResults.innerHTML = '<div class="fts-loading">検索中...</div>';
+  try {
+    const hits = await invoke('search_files', { root: state.root, query: q, isRegex: searchSt.regex });
+    renderFtsResults(hits, q);
+  } catch (e) {
+    ftsResults.innerHTML = `<div class="fts-empty">${escapeHtml(String(e))}</div>`;
   }
 }
 
@@ -565,7 +595,7 @@ function renderFtsResults(hits, query) {
       fileBtn.insertBefore(dir, fileBtn.querySelector('.fts-badge'));
     }
     fileBtn.querySelector('.fts-badge').textContent = pathHits.length;
-    fileBtn.addEventListener('click', () => openFtsFile(path, query));
+    fileBtn.addEventListener('click', () => openFtsFile(path));
     group.append(fileBtn);
 
     for (const hit of pathHits) {
@@ -574,7 +604,7 @@ function renderFtsResults(hits, query) {
       btn.innerHTML = `<span class="fts-lnum">${hit.line}</span><span class="fts-text"></span>`;
       btn.querySelector('.fts-text').innerHTML = highlightFts(hit.text.trim(), query);
       btn.title = hit.text.trim();
-      btn.addEventListener('click', () => openFtsFile(path, query));
+      btn.addEventListener('click', () => openFtsFile(path));
       group.append(btn);
     }
     ftsResults.append(group);
@@ -587,40 +617,15 @@ function renderFtsResults(hits, query) {
   }
 }
 
-async function openFtsFile(path, query) {
+async function openFtsFile(path) {
+  // Switch to file-level scope first, then open — openFile will run doc search
+  searchSt.global = false;
+  searchScopeBtn.textContent = 'ファイル内';
+  searchScopeBtn.classList.remove('global');
+  body.classList.remove('fts-mode');
+  ftsResults.innerHTML = '';
   await openFile(path);
-  if (query) {
-    searchInput.value = query;
-    searchSt.regex = ftsSt.regex;
-    searchRegexBtn.setAttribute('aria-pressed', String(ftsSt.regex));
-    openSearch();
-  }
 }
-
-let ftsTimer;
-ftsInput.addEventListener('input', () => {
-  clearTimeout(ftsTimer);
-  const q = ftsInput.value.trim();
-  if (!q) { ftsResults.innerHTML = ''; return; }
-  ftsResults.innerHTML = '<div class="fts-loading">検索中...</div>';
-  ftsTimer = setTimeout(async () => {
-    try {
-      const hits = await invoke('search_files', { root: state.root, query: q, isRegex: ftsSt.regex });
-      renderFtsResults(hits, q);
-    } catch (e) {
-      ftsResults.innerHTML = `<div class="fts-empty">${escapeHtml(String(e))}</div>`;
-    }
-  }, 250);
-});
-ftsInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeFts();
-});
-ftsRegexBtn.addEventListener('click', () => {
-  ftsSt.regex = !ftsSt.regex;
-  ftsRegexBtn.setAttribute('aria-pressed', String(ftsSt.regex));
-  if (ftsInput.value.trim()) ftsInput.dispatchEvent(new Event('input'));
-});
-$('fts-close').addEventListener('click', closeFts);
 
 // ---------- live reload ----------
 let fsTimer;
@@ -687,7 +692,6 @@ window.addEventListener('keydown', (e) => {
   if (!(e.metaKey || e.ctrlKey)) return;
   const k = e.key.toLowerCase();
   if (k === 'o') { e.preventDefault(); pickFolder(); }
-  else if (k === 'f' && e.shiftKey) { e.preventDefault(); if (state.root) openFts(); }
   else if (k === 'f') { e.preventDefault(); openSearch(); }
   else if (k === 't') { e.preventDefault(); if (state.file) toggleToc(); }
   else if (k === 'b' || k === '\\') {
