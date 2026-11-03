@@ -3,6 +3,7 @@
 mod markdown;
 mod tree;
 
+use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -23,6 +24,13 @@ struct AppState {
 struct OpenTarget {
     root: String,
     file: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SearchHit {
+    path: String,
+    line: u32,
+    text: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -97,6 +105,73 @@ fn watch_root(app: AppHandle, state: State<AppState>, root: String) -> Result<()
     Ok(())
 }
 
+const MAX_SEARCH_HITS: usize = 300;
+const MAX_LINE_BYTES: usize = 400;
+
+fn truncate_line(s: String) -> String {
+    if s.len() <= MAX_LINE_BYTES {
+        return s;
+    }
+    let mut end = MAX_LINE_BYTES;
+    while !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}…", &s[..end])
+}
+
+fn search_in_file(path: &Path, re: &regex::Regex, hits: &mut Vec<SearchHit>) {
+    let Ok(file) = std::fs::File::open(path) else { return };
+    let path_str = path.to_string_lossy().into_owned();
+    for (i, line_res) in std::io::BufReader::new(file).lines().enumerate() {
+        let Ok(line) = line_res else { break };
+        if re.is_match(&line) {
+            hits.push(SearchHit { path: path_str.clone(), line: (i + 1) as u32, text: truncate_line(line) });
+        }
+        if hits.len() >= MAX_SEARCH_HITS {
+            return;
+        }
+    }
+}
+
+fn walk_and_search(root: &Path, dir: &Path, re: &regex::Regex, hits: &mut Vec<SearchHit>, depth: usize) {
+    if depth > 12 || hits.len() >= MAX_SEARCH_HITS {
+        return;
+    }
+    let Ok(mut entries) = std::fs::read_dir(dir).map(|r| r.filter_map(Result::ok).collect::<Vec<_>>()) else { return };
+    entries.sort_by_key(|e| e.file_name());
+    for entry in entries {
+        if hits.len() >= MAX_SEARCH_HITS {
+            break;
+        }
+        let path = entry.path();
+        if tree::is_ignored_path(root, &path) {
+            continue;
+        }
+        let Ok(ft) = entry.file_type() else { continue };
+        if ft.is_dir() {
+            walk_and_search(root, &path, re, hits, depth + 1);
+        } else if tree::is_markdown(&path) && (ft.is_file() || path.is_file()) {
+            search_in_file(&path, re, hits);
+        }
+    }
+}
+
+#[tauri::command]
+async fn search_files(root: String, query: String, is_regex: bool) -> Result<Vec<SearchHit>, String> {
+    if query.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    let pattern = if is_regex { query.clone() } else { regex::escape(&query) };
+    let re = regex::RegexBuilder::new(&pattern)
+        .case_insensitive(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let root_path = PathBuf::from(&root);
+    let mut hits = Vec::new();
+    walk_and_search(&root_path, &root_path, &re, &mut hits, 0);
+    Ok(hits)
+}
+
 /// Queue a path from the OS and tell the UI to pick it up.
 fn deliver_path(app: &AppHandle, path: PathBuf) {
     *app.state::<AppState>().pending.lock().unwrap() = Some(path);
@@ -134,7 +209,8 @@ fn main() {
             resolve_open,
             list_tree,
             render_file,
-            watch_root
+            watch_root,
+            search_files
         ])
         .build(tauri::generate_context!())
         .expect("failed to build MD Viewer");

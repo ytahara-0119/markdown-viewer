@@ -19,6 +19,16 @@
       <input id="filter" type="search" placeholder="ファイル名で絞り込み" autocomplete="off" spellcheck="false">
     </div>
     <nav id="tree" aria-label="ファイル"></nav>
+    <div id="fts-wrap">
+      <div class="fts-head">
+        <button id="fts-regex" class="search-toggle" aria-pressed="false" title="正規表現">.*</button>
+        <input id="fts-input" type="search" placeholder="全ファイルを検索..." autocomplete="off" spellcheck="false">
+        <button id="fts-close" class="icon-btn" title="閉じる" aria-label="閉じる">
+          <svg viewBox="0 0 10 10" width="12" height="12"><path d="M2 2 8 8M8 2 2 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="fts-results"></div>
+    </div>
   </aside>
   <div id="resizer" aria-hidden="true"></div>
 
@@ -35,6 +45,7 @@
       <div class="toc-header">目次</div>
       <nav id="toc-nav"></nav>
     </div>
+    <div id="progress-bar" aria-hidden="true"></div>
     <div id="search-bar" role="search" aria-label="ドキュメント内検索">
       <button id="search-regex" class="search-toggle" title="正規表現 (Alt+R)" aria-pressed="false">.*</button>
       <input id="search-input" type="search" placeholder="検索..." autocomplete="off" spellcheck="false">
@@ -56,7 +67,7 @@
         <h1>MD Viewer</h1>
         <p>フォルダを開くか、Markdownファイル・フォルダをここにドロップしてください。</p>
         <button class="primary-btn" id="btn-open-empty">フォルダを開く</button>
-        <p class="hint">⌘O 開く ・ ⌘B サイドバー ・ ⌘F 検索 ・ ⌘T 目次 ・ ⌘R 再読込 ・ ⌘+ / ⌘− 文字サイズ</p>
+        <p class="hint">⌘O 開く ・ ⌘B サイドバー ・ ⌘F 検索 ・ ⌘⇧F 全文検索 ・ ⌘T 目次 ・ ⌘R 再読込 ・ ⌘+ / ⌘− 文字サイズ</p>
       </section>
     </div>
   </main>

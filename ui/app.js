@@ -17,6 +17,9 @@ const searchRegexBtn = $('search-regex');
 const tocPanel = $('toc-panel');
 const tocNav = $('toc-nav');
 const btnToc = $('btn-toc');
+const ftsInput = $('fts-input');
+const ftsResults = $('fts-results');
+const ftsRegexBtn = $('fts-regex');
 
 const state = {
   root: null,
@@ -480,8 +483,144 @@ function updateTocActive() {
   if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
 }
 
-scroller.addEventListener('scroll', () => { updateTocActive(); }, { passive: true });
+const progressBar = $('progress-bar');
+function updateProgressBar() {
+  const { scrollTop, scrollHeight, clientHeight } = scroller;
+  const pct = scrollHeight <= clientHeight ? 0 : (scrollTop / (scrollHeight - clientHeight)) * 100;
+  progressBar.style.setProperty('--scroll-pct', `${pct.toFixed(2)}%`);
+}
+
+scroller.addEventListener('scroll', () => { updateTocActive(); updateProgressBar(); }, { passive: true });
 btnToc.addEventListener('click', toggleToc);
+
+// ---------- full-text search ----------
+const ftsSt = { regex: false };
+
+function openFts() {
+  body.classList.add('fts-mode');
+  body.classList.remove('no-sidebar');
+  ftsInput.focus();
+  ftsInput.select();
+}
+
+function closeFts() {
+  body.classList.remove('fts-mode');
+  ftsResults.innerHTML = '';
+  ftsInput.value = '';
+}
+
+function highlightFts(text, query) {
+  if (!query) return escapeHtml(text);
+  try {
+    const pattern = ftsSt.regex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(pattern, 'gi');
+    const parts = [];
+    let last = 0;
+    for (const m of text.matchAll(re)) {
+      parts.push(escapeHtml(text.slice(last, m.index)));
+      parts.push(`<mark class="fts-mark">${escapeHtml(m[0])}</mark>`);
+      last = m.index + m[0].length;
+    }
+    parts.push(escapeHtml(text.slice(last)));
+    return parts.join('');
+  } catch {
+    return escapeHtml(text);
+  }
+}
+
+function renderFtsResults(hits, query) {
+  ftsResults.innerHTML = '';
+  if (!hits.length) {
+    ftsResults.innerHTML = '<div class="fts-empty">一致なし</div>';
+    return;
+  }
+  const groups = new Map();
+  for (const hit of hits) {
+    if (!groups.has(hit.path)) groups.set(hit.path, []);
+    groups.get(hit.path).push(hit);
+  }
+  const capped = hits.length >= 300;
+  const summary = document.createElement('div');
+  summary.className = 'fts-summary';
+  summary.textContent = capped
+    ? `300件以上 — ${groups.size}ファイル`
+    : `${hits.length}件 — ${groups.size}ファイル`;
+  ftsResults.append(summary);
+
+  for (const [path, pathHits] of groups) {
+    const group = document.createElement('div');
+    group.className = 'fts-group';
+    const rel = relPath(path);
+    const namePart = rel.split('/').pop();
+    const dirPart = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '';
+
+    const fileBtn = document.createElement('button');
+    fileBtn.className = 'fts-file-btn';
+    fileBtn.innerHTML = '<span class="fts-fname"></span><span class="fts-badge"></span>';
+    fileBtn.querySelector('.fts-fname').textContent = namePart;
+    if (dirPart) {
+      const dir = document.createElement('span');
+      dir.className = 'fts-fdir';
+      dir.textContent = dirPart;
+      fileBtn.insertBefore(dir, fileBtn.querySelector('.fts-badge'));
+    }
+    fileBtn.querySelector('.fts-badge').textContent = pathHits.length;
+    fileBtn.addEventListener('click', () => openFtsFile(path, query));
+    group.append(fileBtn);
+
+    for (const hit of pathHits) {
+      const btn = document.createElement('button');
+      btn.className = 'fts-hit';
+      btn.innerHTML = `<span class="fts-lnum">${hit.line}</span><span class="fts-text"></span>`;
+      btn.querySelector('.fts-text').innerHTML = highlightFts(hit.text.trim(), query);
+      btn.title = hit.text.trim();
+      btn.addEventListener('click', () => openFtsFile(path, query));
+      group.append(btn);
+    }
+    ftsResults.append(group);
+  }
+  if (capped) {
+    const note = document.createElement('div');
+    note.className = 'fts-empty';
+    note.textContent = '上位300件を表示。検索語を絞り込んでください。';
+    ftsResults.append(note);
+  }
+}
+
+async function openFtsFile(path, query) {
+  await openFile(path);
+  if (query) {
+    searchInput.value = query;
+    searchSt.regex = ftsSt.regex;
+    searchRegexBtn.setAttribute('aria-pressed', String(ftsSt.regex));
+    openSearch();
+  }
+}
+
+let ftsTimer;
+ftsInput.addEventListener('input', () => {
+  clearTimeout(ftsTimer);
+  const q = ftsInput.value.trim();
+  if (!q) { ftsResults.innerHTML = ''; return; }
+  ftsResults.innerHTML = '<div class="fts-loading">検索中...</div>';
+  ftsTimer = setTimeout(async () => {
+    try {
+      const hits = await invoke('search_files', { root: state.root, query: q, isRegex: ftsSt.regex });
+      renderFtsResults(hits, q);
+    } catch (e) {
+      ftsResults.innerHTML = `<div class="fts-empty">${escapeHtml(String(e))}</div>`;
+    }
+  }, 250);
+});
+ftsInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeFts();
+});
+ftsRegexBtn.addEventListener('click', () => {
+  ftsSt.regex = !ftsSt.regex;
+  ftsRegexBtn.setAttribute('aria-pressed', String(ftsSt.regex));
+  if (ftsInput.value.trim()) ftsInput.dispatchEvent(new Event('input'));
+});
+$('fts-close').addEventListener('click', closeFts);
 
 // ---------- live reload ----------
 let fsTimer;
@@ -548,6 +687,7 @@ window.addEventListener('keydown', (e) => {
   if (!(e.metaKey || e.ctrlKey)) return;
   const k = e.key.toLowerCase();
   if (k === 'o') { e.preventDefault(); pickFolder(); }
+  else if (k === 'f' && e.shiftKey) { e.preventDefault(); if (state.root) openFts(); }
   else if (k === 'f') { e.preventDefault(); openSearch(); }
   else if (k === 't') { e.preventDefault(); if (state.file) toggleToc(); }
   else if (k === 'b' || k === '\\') {
