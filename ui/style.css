@@ -556,6 +556,32 @@ body.drag-over #main { outline: 2px dashed var(--ring); outline-offset: -10px; }
 
 .markdown-body .error { color: var(--muted-foreground); padding-top: 10vh; text-align: center; }
 
+.mermaid-diagram {
+  text-align: center;
+  margin: 0 0 1em;
+  padding: 20px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+pre.mermaid-error {
+  border-color: color-mix(in srgb, #c9504a 40%, transparent);
+  position: relative;
+}
+pre.mermaid-error::after {
+  content: '⚠ Mermaid エラー';
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #c9504a;
+  font-family: inherit;
+}
+
 @media (max-width: 700px) {
   .markdown-body { padding: 24px 20px 80px; }
   #pathbar { padding: 8px 20px; }

@@ -104,6 +104,7 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
   state.file = path;
   content.innerHTML = rendered.html;
   decorate();
+  renderMermaid();
   body.classList.remove('is-empty');
   $('pathbar-text').textContent = relPath(path);
   document.title = `${basename(path)} — MD Viewer`;
@@ -656,11 +657,49 @@ window.addEventListener('dragover', (e) => { e.preventDefault(); body.classList.
 window.addEventListener('dragleave', (e) => { if (!e.relatedTarget) body.classList.remove('drag-over'); });
 window.addEventListener('drop', (e) => { e.preventDefault(); body.classList.remove('drag-over'); });
 
+// ---------- mermaid ----------
+let mermaidSeq = 0;
+
+function initMermaid() {
+  const isDark = document.documentElement.classList.contains('dark');
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isDark ? 'dark' : 'default',
+    securityLevel: 'strict',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif',
+  });
+}
+
+async function renderMermaid() {
+  const blocks = [...content.querySelectorAll('pre code.language-mermaid')];
+  if (!blocks.length) return;
+  for (const code of blocks) {
+    const pre = code.closest('pre');
+    if (!pre || !pre.isConnected) continue;
+    const text = code.textContent;
+    const id = `mermaid-${++mermaidSeq}`;
+    try {
+      const { svg } = await mermaid.render(id, text);
+      if (!pre.isConnected) continue;
+      const div = document.createElement('div');
+      div.className = 'mermaid-diagram';
+      div.innerHTML = svg;
+      pre.replaceWith(div);
+    } catch {
+      pre.classList.add('mermaid-error');
+    }
+  }
+}
+
 // ---------- appearance ----------
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-const applyTheme = () => document.documentElement.classList.toggle('dark', darkQuery.matches);
+const applyTheme = () => {
+  document.documentElement.classList.toggle('dark', darkQuery.matches);
+  initMermaid();
+  if (state.file) openFile(state.file, { keepScroll: true });
+};
 darkQuery.addEventListener('change', applyTheme);
-applyTheme();
+initMermaid();
 
 let fontSize = store.get('fontSize', 16);
 const applyFont = () => body.style.setProperty('--font-size', `${fontSize}px`);
