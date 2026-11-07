@@ -508,7 +508,26 @@ body.drag-over #main { outline: 2px dashed var(--ring); outline-offset: -10px; }
   border-radius: var(--radius);
   background: var(--card);
   border: 1px solid var(--border);
+  position: relative;
 }
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--card);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, color .15s, border-color .15s;
+  line-height: 1.6;
+}
+.markdown-body pre:hover .copy-btn { opacity: 1; }
+.copy-btn.copied { color: var(--primary); border-color: var(--primary); opacity: 1; }
 .markdown-body pre code { padding: 0; background: none; font-size: .84em; }
 
 .markdown-body table {

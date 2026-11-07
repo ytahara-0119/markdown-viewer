@@ -153,6 +153,25 @@ function decorate() {
     h.id = id;
   }
   for (const box of content.querySelectorAll('input[type="checkbox"]')) box.disabled = true;
+
+  for (const pre of content.querySelectorAll('pre')) {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'コピー';
+    btn.setAttribute('aria-label', 'コードをコピー');
+    btn.addEventListener('click', async () => {
+      const text = (pre.querySelector('code') ?? pre).textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '✓ コピー済み';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 1800);
+      } catch {
+        toast('クリップボードへのコピーに失敗しました');
+      }
+    });
+    pre.append(btn);
+  }
 }
 
 function scrollToAnchor(anchor) {
