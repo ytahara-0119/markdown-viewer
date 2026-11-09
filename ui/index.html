@@ -61,12 +61,19 @@
         <h1>MD Viewer</h1>
         <p>フォルダを開くか、Markdownファイル・フォルダをここにドロップしてください。</p>
         <button class="primary-btn" id="btn-open-empty">フォルダを開く</button>
-        <p class="hint">⌘O 開く ・ ⌘B サイドバー ・ ⌘F 検索（ファイル内 / 全体切替）・ ⌘T 目次 ・ ⌘R 再読込 ・ ⌘+ / ⌘− 文字サイズ</p>
+        <p class="hint">⌘O 開く ・ ⌘P 最近のファイル ・ ⌘B サイドバー ・ ⌘F 検索 ・ ⌘T 目次 ・ ⌘R 再読込 ・ ⌘+ / ⌘− 文字サイズ</p>
       </section>
     </div>
   </main>
 
   <div id="toast" role="status"></div>
+
+  <div id="quickopen" role="dialog" aria-modal="true" aria-label="最近開いたファイル">
+    <div id="quickopen-box">
+      <input id="quickopen-input" type="search" placeholder="最近のファイルを絞り込み..." autocomplete="off" spellcheck="false">
+      <div id="quickopen-list" role="listbox"></div>
+    </div>
+  </div>
   <script src="mermaid.min.js"></script>
   <script src="app.js"></script>
 </body>

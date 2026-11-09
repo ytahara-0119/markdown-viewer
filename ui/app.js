@@ -19,6 +19,9 @@ const tocPanel = $('toc-panel');
 const tocNav = $('toc-nav');
 const btnToc = $('btn-toc');
 const ftsResults = $('fts-results');
+const quickopen = $('quickopen');
+const qoInput = $('quickopen-input');
+const qoList = $('quickopen-list');
 
 const state = {
   root: null,
@@ -111,6 +114,7 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
 
   revealInTree(path);
   store.set('lastFile', path);
+  addRecent(path);
 
   if (anchor) scrollToAnchor(anchor);
   else scroller.scrollTop = keepScroll ? prevScroll : 0;
@@ -647,6 +651,98 @@ async function openFtsFile(path) {
   await openFile(path);
 }
 
+// ---------- recent files / quick open ----------
+const MAX_RECENTS = 30;
+
+function addRecent(path) {
+  const list = [path, ...store.get('recents', []).filter((p) => p !== path)].slice(0, MAX_RECENTS);
+  store.set('recents', list);
+}
+
+function getRecents() {
+  return store.get('recents', []);
+}
+
+let qoActiveIdx = -1;
+
+function openQuickOpen() {
+  quickopen.classList.add('visible');
+  qoInput.value = '';
+  qoActiveIdx = 0;
+  renderQoList('');
+  qoInput.focus();
+}
+
+function closeQuickOpen() {
+  quickopen.classList.remove('visible');
+  qoActiveIdx = -1;
+}
+
+function renderQoList(query) {
+  const q = query.trim().toLowerCase();
+  const all = getRecents();
+  const items = q ? all.filter((p) => relPath(p).toLowerCase().includes(q) || basename(p).toLowerCase().includes(q)) : all;
+
+  qoList.innerHTML = '';
+  if (!items.length) {
+    qoList.innerHTML = '<div class="qo-empty">一致するファイルがありません</div>';
+    qoActiveIdx = -1;
+    return;
+  }
+  qoActiveIdx = Math.max(0, Math.min(qoActiveIdx, items.length - 1));
+
+  for (let i = 0; i < items.length; i++) {
+    const path = items[i];
+    const name = basename(path);
+    const dir = isInside(path, state.root) ? relPath(path).split('/').slice(0, -1).join('/') : path.split('/').slice(0, -1).join('/');
+
+    const btn = document.createElement('button');
+    btn.className = 'qo-item' + (i === qoActiveIdx ? ' active' : '');
+    btn.dataset.path = path;
+    btn.innerHTML = '<span class="file-dot"></span><span class="qo-name"></span><span class="qo-dir"></span>';
+    btn.querySelector('.qo-name').textContent = name;
+    btn.querySelector('.qo-dir').textContent = dir;
+    btn.addEventListener('click', () => openRecentFile(path));
+    btn.addEventListener('mouseenter', () => {
+      qoList.querySelectorAll('.qo-item.active').forEach((el) => el.classList.remove('active'));
+      btn.classList.add('active');
+      qoActiveIdx = i;
+    });
+    qoList.append(btn);
+  }
+}
+
+function qoNavigate(dir) {
+  const items = [...qoList.querySelectorAll('.qo-item')];
+  if (!items.length) return;
+  if (qoActiveIdx >= 0) items[qoActiveIdx]?.classList.remove('active');
+  qoActiveIdx = Math.max(0, Math.min(items.length - 1, qoActiveIdx + dir));
+  items[qoActiveIdx].classList.add('active');
+  items[qoActiveIdx].scrollIntoView({ block: 'nearest' });
+}
+
+async function openRecentFile(path) {
+  closeQuickOpen();
+  if (state.root && isInside(path, state.root)) await openFile(path);
+  else await openPath(path);
+}
+
+qoInput.addEventListener('input', () => {
+  qoActiveIdx = 0;
+  renderQoList(qoInput.value);
+});
+qoInput.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); qoNavigate(1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); qoNavigate(-1); }
+  else if (e.key === 'Enter') {
+    e.preventDefault();
+    const active = qoList.querySelector('.qo-item.active') ?? qoList.querySelector('.qo-item');
+    if (active) openRecentFile(active.dataset.path);
+  }
+  else if (e.key === 'Escape') closeQuickOpen();
+});
+quickopen.addEventListener('click', (e) => { if (e.target === quickopen) closeQuickOpen(); });
+
 // ---------- live reload ----------
 let fsTimer;
 let pendingStructural = false;
@@ -761,7 +857,8 @@ window.addEventListener('keydown', (e) => {
     if (state.root) loadTree();
     if (state.file) openFile(state.file, { keepScroll: true });
   }
-  else if (k === 'p' || k === 'k') { e.preventDefault(); body.classList.remove('no-sidebar'); filterEl.focus(); filterEl.select(); }
+  else if (k === 'p') { e.preventDefault(); openQuickOpen(); }
+  else if (k === 'k') { e.preventDefault(); body.classList.remove('no-sidebar'); filterEl.focus(); filterEl.select(); }
   else if (k === '=' || k === '+' || k === ';') { e.preventDefault(); fontSize = Math.min(28, fontSize + 1); applyFont(); store.set('fontSize', fontSize); }
   else if (k === '-') { e.preventDefault(); fontSize = Math.max(11, fontSize - 1); applyFont(); store.set('fontSize', fontSize); }
   else if (k === '0') { e.preventDefault(); fontSize = 16; applyFont(); store.set('fontSize', fontSize); }
