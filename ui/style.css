@@ -771,3 +771,60 @@ pre.mermaid-error::after {
   .markdown-body { padding: 24px 20px 80px; }
   #pathbar { padding: 8px 20px; }
 }
+
+/* ---------- Syntax highlighting ---------- */
+.hljs { background: transparent; padding: 0; }
+.hljs-keyword, .hljs-operator, .hljs-selector-tag { color: #cf222e; }
+.hljs-string, .hljs-quote, .hljs-doctag, .hljs-regexp { color: #0a3069; }
+.hljs-comment, .hljs-code { color: #6e7781; font-style: italic; }
+.hljs-number, .hljs-literal { color: #0550ae; }
+.hljs-built_in, .hljs-variable.language_ { color: #953800; }
+.hljs-title, .hljs-title.class_, .hljs-title.function_ { color: #8250df; }
+.hljs-attr, .hljs-attribute { color: #0550ae; }
+.hljs-name, .hljs-tag { color: #116329; }
+.hljs-type, .hljs-class .hljs-title { color: #953800; }
+.hljs-meta { color: #6e7781; }
+.hljs-addition { color: #116329; background: #dafbe1; border-radius: 2px; }
+.hljs-deletion { color: #82071e; background: #ffebe9; border-radius: 2px; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+
+.dark .hljs-keyword, .dark .hljs-operator, .dark .hljs-selector-tag { color: #ff7b72; }
+.dark .hljs-string, .dark .hljs-quote, .dark .hljs-doctag, .dark .hljs-regexp { color: #a5d6ff; }
+.dark .hljs-comment, .dark .hljs-code { color: #8b949e; }
+.dark .hljs-number, .dark .hljs-literal { color: #79c0ff; }
+.dark .hljs-built_in, .dark .hljs-variable.language_ { color: #ffa657; }
+.dark .hljs-title, .dark .hljs-title.class_, .dark .hljs-title.function_ { color: #d2a8ff; }
+.dark .hljs-attr, .dark .hljs-attribute { color: #79c0ff; }
+.dark .hljs-name, .dark .hljs-tag { color: #7ee787; }
+.dark .hljs-type, .dark .hljs-class .hljs-title { color: #ffa657; }
+.dark .hljs-meta { color: #8b949e; }
+.dark .hljs-addition { color: #3fb950; background: rgba(63,185,80,.15); }
+.dark .hljs-deletion { color: #f85149; background: rgba(248,81,73,.15); }
+
+/* ---------- Focus mode ---------- */
+body.focus-mode #sidebar,
+body.focus-mode #resizer,
+body.focus-mode #pathbar,
+body.focus-mode #progress-bar,
+body.focus-mode #toc-panel,
+body.focus-mode #settings-panel { display: none !important; }
+
+#btn-focus-exit {
+  display: none;
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 100;
+  padding: 6px 7px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--card);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0.25;
+  transition: opacity .15s;
+  line-height: 0;
+}
+body.focus-mode #btn-focus-exit { display: block; }
+#btn-focus-exit:hover { opacity: 1; }

@@ -130,6 +130,7 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
 }
 
 function showEmpty() {
+  if (focusMode) exitFocusMode();
   state.file = null;
   content.innerHTML = '';
   $('pathbar-text').textContent = '';
@@ -157,6 +158,10 @@ function decorate() {
     h.id = id;
   }
   for (const box of content.querySelectorAll('input[type="checkbox"]')) box.disabled = true;
+
+  for (const code of content.querySelectorAll('pre code')) {
+    if (!code.classList.contains('language-mermaid')) hljs.highlightElement(code);
+  }
 
   for (const pre of content.querySelectorAll('pre')) {
     const btn = document.createElement('button');
@@ -659,8 +664,30 @@ scroller.addEventListener('wheel', (e) => {
 document.addEventListener('click', (e) => {
   if (settingsSt.panel && !$('settings-panel').contains(e.target)) closeSettings();
 });
+
+// ---------- focus mode ----------
+let focusMode = false;
+
+function enterFocusMode() {
+  focusMode = true;
+  body.classList.add('focus-mode');
+  $('btn-focus').setAttribute('aria-pressed', 'true');
+}
+
+function exitFocusMode() {
+  focusMode = false;
+  body.classList.remove('focus-mode');
+  $('btn-focus').setAttribute('aria-pressed', 'false');
+}
+
+$('btn-focus').addEventListener('click', () => {
+  if (focusMode) exitFocusMode(); else enterFocusMode();
+});
+$('btn-focus-exit').addEventListener('click', exitFocusMode);
+
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && settingsSt.panel) closeSettings();
+  else if (e.key === 'Escape' && focusMode) exitFocusMode();
 }, true);
 
 // ---------- full-text search ----------
