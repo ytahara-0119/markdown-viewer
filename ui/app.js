@@ -556,6 +556,7 @@ const settingsSt = {
   width: store.get('contentWidth', 'standard'),
   theme: store.get('colorTheme', 'rose'),
   imgShadow: store.get('imgShadow', false),
+  scrollSpeed: store.get('scrollSpeed', 1),
 };
 
 function applyContentWidth(w) {
@@ -598,6 +599,9 @@ function updateSettingsUI() {
     btn.classList.toggle('active', btn.dataset.value === settingsSt.theme);
   }
   $('toggle-img-shadow').setAttribute('aria-checked', String(settingsSt.imgShadow));
+  for (const btn of $('scroll-choices').querySelectorAll('.settings-choice')) {
+    btn.classList.toggle('active', parseFloat(btn.dataset.value) === settingsSt.scrollSpeed);
+  }
 }
 
 $('toggle-dark-mode').addEventListener('click', () => {
@@ -637,6 +641,20 @@ $('toggle-img-shadow').addEventListener('click', () => {
   applyImgShadow(settingsSt.imgShadow);
   updateSettingsUI();
 });
+
+$('scroll-choices').addEventListener('click', (e) => {
+  const btn = e.target.closest('.settings-choice');
+  if (!btn) return;
+  settingsSt.scrollSpeed = parseFloat(btn.dataset.value);
+  store.set('scrollSpeed', settingsSt.scrollSpeed);
+  updateSettingsUI();
+});
+
+scroller.addEventListener('wheel', (e) => {
+  if (settingsSt.scrollSpeed === 1) return;
+  e.preventDefault();
+  scroller.scrollTop += e.deltaY * settingsSt.scrollSpeed;
+}, { passive: false });
 
 document.addEventListener('click', (e) => {
   if (settingsSt.panel && !$('settings-panel').contains(e.target)) closeSettings();
