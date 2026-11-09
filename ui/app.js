@@ -550,6 +550,94 @@ function updateProgressBar() {
 scroller.addEventListener('scroll', () => { updateTocActive(); updateProgressBar(); }, { passive: true });
 btnToc.addEventListener('click', toggleToc);
 
+// ---------- settings ----------
+const settingsSt = {
+  panel: false,
+  width: store.get('contentWidth', 'standard'),
+  theme: store.get('colorTheme', 'rose'),
+  imgShadow: store.get('imgShadow', false),
+};
+
+function applyContentWidth(w) {
+  body.classList.remove('width-narrow', 'width-wide');
+  if (w === 'narrow') body.classList.add('width-narrow');
+  else if (w === 'wide') body.classList.add('width-wide');
+}
+
+function applyColorTheme(t) {
+  document.documentElement.classList.remove('theme-ocean', 'theme-mono');
+  if (t === 'ocean') document.documentElement.classList.add('theme-ocean');
+  else if (t === 'mono') document.documentElement.classList.add('theme-mono');
+}
+
+function applyImgShadow(on) {
+  body.classList.toggle('img-shadow', on);
+}
+
+function openSettings() {
+  settingsSt.panel = true;
+  $('settings-panel').classList.add('visible');
+  $('settings-panel').removeAttribute('aria-hidden');
+  $('btn-settings').setAttribute('aria-expanded', 'true');
+  updateSettingsUI();
+}
+
+function closeSettings() {
+  settingsSt.panel = false;
+  $('settings-panel').classList.remove('visible');
+  $('settings-panel').setAttribute('aria-hidden', 'true');
+  $('btn-settings').setAttribute('aria-expanded', 'false');
+}
+
+function updateSettingsUI() {
+  for (const btn of $('width-choices').querySelectorAll('.settings-choice')) {
+    btn.classList.toggle('active', btn.dataset.value === settingsSt.width);
+  }
+  for (const btn of $('theme-choices').querySelectorAll('.settings-choice')) {
+    btn.classList.toggle('active', btn.dataset.value === settingsSt.theme);
+  }
+  $('toggle-img-shadow').setAttribute('aria-checked', String(settingsSt.imgShadow));
+}
+
+$('btn-settings').addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (settingsSt.panel) closeSettings();
+  else openSettings();
+});
+
+$('width-choices').addEventListener('click', (e) => {
+  const btn = e.target.closest('.settings-choice');
+  if (!btn) return;
+  settingsSt.width = btn.dataset.value;
+  store.set('contentWidth', settingsSt.width);
+  applyContentWidth(settingsSt.width);
+  updateSettingsUI();
+});
+
+$('theme-choices').addEventListener('click', (e) => {
+  const btn = e.target.closest('.settings-choice');
+  if (!btn) return;
+  settingsSt.theme = btn.dataset.value;
+  store.set('colorTheme', settingsSt.theme);
+  applyColorTheme(settingsSt.theme);
+  if (state.file) openFile(state.file, { keepScroll: true });
+  updateSettingsUI();
+});
+
+$('toggle-img-shadow').addEventListener('click', () => {
+  settingsSt.imgShadow = !settingsSt.imgShadow;
+  store.set('imgShadow', settingsSt.imgShadow);
+  applyImgShadow(settingsSt.imgShadow);
+  updateSettingsUI();
+});
+
+document.addEventListener('click', (e) => {
+  if (settingsSt.panel && !$('settings-panel').contains(e.target)) closeSettings();
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && settingsSt.panel) closeSettings();
+}, true);
+
 // ---------- full-text search ----------
 function highlightFts(text, query) {
   if (!query) return escapeHtml(text);
@@ -816,6 +904,10 @@ const applyTheme = () => {
 darkQuery.addEventListener('change', applyTheme);
 initMermaid();
 
+applyContentWidth(settingsSt.width);
+applyColorTheme(settingsSt.theme);
+applyImgShadow(settingsSt.imgShadow);
+
 let fontSize = store.get('fontSize', 16);
 const applyFont = () => body.style.setProperty('--font-size', `${fontSize}px`);
 applyFont();
@@ -858,6 +950,7 @@ window.addEventListener('keydown', (e) => {
     if (state.file) openFile(state.file, { keepScroll: true });
   }
   else if (k === 'p') { e.preventDefault(); openQuickOpen(); }
+  else if (k === ',') { e.preventDefault(); if (settingsSt.panel) closeSettings(); else openSettings(); }
   else if (k === 'k') { e.preventDefault(); body.classList.remove('no-sidebar'); filterEl.focus(); filterEl.select(); }
   else if (k === '=' || k === '+' || k === ';') { e.preventDefault(); fontSize = Math.min(28, fontSize + 1); applyFont(); store.set('fontSize', fontSize); }
   else if (k === '-') { e.preventDefault(); fontSize = Math.max(11, fontSize - 1); applyFont(); store.set('fontSize', fontSize); }
