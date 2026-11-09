@@ -58,6 +58,33 @@ cargo tauri build    # .app を作成
 `:root` がライト、`.dark` がダークです。
 Morphous ギャラリーの「Copy all」でコピーした CSS で丸ごと置き換えれば、そのまま反映されます。
 
+## アイコンを変える
+
+元データは `src-tauri/app-icon.png`(1024×1024px の透過 PNG)です。
+`src-tauri/icons/` の中身はここから自動生成するので、直接編集しません。
+
+```sh
+cd src-tauri
+cargo tauri icon app-icon.png   # icons/ 一式を再生成
+touch src/main.rs               # アイコンを埋め込み直すため再コンパイルさせる
+cargo tauri dev
+```
+
+元データを作るときの決まり(macOS 標準のアイコン寸法):
+
+- キャンバスは 1024×1024px、背景は透明
+- 角丸タイルは 824×824px で中央に置く(上下左右の余白は各 100px)
+- 角丸の半径は約 185px
+
+タイルをキャンバスいっぱいに描いたり、余白を広く取りすぎたりすると、Dock で他のアプリより大きく/小さく見えます
+(以前はタイルがキャンバスの約 65% しかなく、小さく表示されていました)。
+
+反映されないとき:
+
+- アイコンはコンパイル時にバイナリへ埋め込まれますが、画像を差し替えただけでは Cargo が再コンパイルしないことがあります。
+  `touch src/main.rs` で直らなければ `cargo clean -p folio` のあとにビルドし直します。
+- Dock に古いアイコンが残る場合は `killall Dock` を実行します。
+
 ## 構成
 
 ```
@@ -67,6 +94,7 @@ src-tauri/
   src/markdown.rs   Markdown → HTML(pulldown-cmark)、画像/リンクの書き換え
   src/tree.rs       サイドバー用のファイルツリー
   tauri.conf.json   ウィンドウ・ファイル関連付け・セキュリティ設定
+  app-icon.png      アイコンの元データ(icons/ はここから生成)
 ```
 
 ツリーには隠しフォルダと `node_modules` / `target` / `dist` / `build` / `vendor` は表示しません(`tree.rs` で変更可)。
