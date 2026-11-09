@@ -590,6 +590,7 @@ function closeSettings() {
 }
 
 function updateSettingsUI() {
+  $('toggle-dark-mode').setAttribute('aria-checked', String(document.documentElement.classList.contains('dark')));
   for (const btn of $('width-choices').querySelectorAll('.settings-choice')) {
     btn.classList.toggle('active', btn.dataset.value === settingsSt.width);
   }
@@ -598,6 +599,12 @@ function updateSettingsUI() {
   }
   $('toggle-img-shadow').setAttribute('aria-checked', String(settingsSt.imgShadow));
 }
+
+$('toggle-dark-mode').addEventListener('click', () => {
+  const newDark = !document.documentElement.classList.contains('dark');
+  store.set('darkOverride', newDark);
+  applyDark(newDark);
+});
 
 $('btn-settings').addEventListener('click', (e) => {
   e.stopPropagation();
@@ -896,17 +903,27 @@ async function renderMermaid() {
 
 // ---------- appearance ----------
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-const applyTheme = () => {
-  document.documentElement.classList.toggle('dark', darkQuery.matches);
+
+function applyDark(isDark) {
+  document.documentElement.classList.toggle('dark', isDark);
   initMermaid();
   if (state.file) openFile(state.file, { keepScroll: true });
-};
-darkQuery.addEventListener('change', applyTheme);
-initMermaid();
+  if (settingsSt.panel) updateSettingsUI();
+}
+
+darkQuery.addEventListener('change', () => {
+  if (store.get('darkOverride') !== null) return;
+  applyDark(darkQuery.matches);
+});
+
+// Apply initial dark state (override > system)
+const _darkInit = store.get('darkOverride');
+document.documentElement.classList.toggle('dark', _darkInit !== null ? _darkInit : darkQuery.matches);
 
 applyContentWidth(settingsSt.width);
 applyColorTheme(settingsSt.theme);
 applyImgShadow(settingsSt.imgShadow);
+initMermaid();
 
 let fontSize = store.get('fontSize', 16);
 const applyFont = () => body.style.setProperty('--font-size', `${fontSize}px`);
