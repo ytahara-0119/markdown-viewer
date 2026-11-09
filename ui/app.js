@@ -1,4 +1,4 @@
-// MD Viewer front end. Talks to the Rust side through window.__TAURI__ (withGlobalTauri).
+// Folio front end. Talks to the Rust side through window.__TAURI__ (withGlobalTauri).
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 const { open: openDialog } = window.__TAURI__.dialog;
@@ -110,7 +110,7 @@ async function openFile(path, { keepScroll = false, anchor = null } = {}) {
   renderMermaid();
   body.classList.remove('is-empty');
   $('pathbar-text').textContent = relPath(path);
-  document.title = `${basename(path)} — MD Viewer`;
+  document.title = `${basename(path)} — Folio`;
 
   revealInTree(path);
   store.set('lastFile', path);
@@ -134,7 +134,7 @@ function showEmpty() {
   state.file = null;
   content.innerHTML = '';
   $('pathbar-text').textContent = '';
-  document.title = 'MD Viewer';
+  document.title = 'Folio';
   body.classList.add('is-empty');
   renderTree();
   tocNav.innerHTML = '';

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MD Viewer",
+  "productName": "Folio",
   "version": "0.1.0",
-  "identifier": "com.ytahara.mdviewer",
+  "identifier": "com.ytahara.folio",
   "build": {
     "frontendDist": "../ui"
   },
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "MD Viewer",
+        "title": "Folio",
         "width": 1100,
         "height": 760,
         "minWidth": 520,
